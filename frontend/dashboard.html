@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101821">
+  <title>CloudGuard · Cloud Operations</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+  <link rel="stylesheet" href="/enhancements.css">
+  <script src="/interactions.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="CloudGuard home"><span class="brand-icon">⬡</span> CloudGuard</a>
+    <div class="workspace"><span class="workspace-icon">CG</span><div>Local workspace<small>Docker environment</small></div><span class="local-dot"></span></div>
+    <div class="nav-label">WORKSPACE</div>
+    <nav><a class="active" href="#overview">◫ <span>Overview</span></a><a href="#instances">▦ <span>Instances</span></a><a href="#history">⌁ <span>Performance</span></a><a href="#incidents">◷ <span>Incident log</span></a><a href="/">↗ <span>Project home</span></a></nav>
+    <div class="sidebar-note"><span class="mini-label">ENVIRONMENT</span><p>Small cloud.<br>Real resilience.</p><small>Docker · NGINX · FastAPI<br>Persistent SQLite monitoring</small></div>
+    <div class="sidebar-footer"><span class="local-dot"></span> Local Docker network <small>CloudGuard / v1.0</small></div>
+  </aside>
+  <main id="overview">
+    <header><div class="breadcrumb">Workspace <span>/</span> <strong>Overview</strong></div><div class="header-right"><button id="theme-toggle" class="icon-button" type="button" aria-label="Switch to light theme">☼</button><button id="present-toggle" type="button" aria-pressed="false">Focus mode</button><span class="env-pill">LOCAL</span><span class="avatar">CG</span></div></header>
+    <div class="page-content">
+      <section class="page-heading"><div><div class="eyebrow">CLOUD OPERATIONS <span class="eyebrow-line"></span> LIVE ENVIRONMENT</div><h1>Infrastructure overview<span class="heading-dot">.</span></h1><p>Live health, measured availability, and recovery across your mini cloud.</p></div><div class="heading-actions"><button id="demo-guide" type="button">▷ Recovery guide</button><button id="refresh" type="button" aria-label="Refresh now">↻ <span>Refresh now</span></button></div></section>
+      <div class="status-banner" id="status-banner" role="status"><div class="status-symbol" id="status-symbol">◌</div><div><strong id="overall-title">Connecting to monitoring</strong><p id="overall-detail">Waiting for recorded health checks…</p></div><span class="live-label" id="live-label">CONNECTING</span></div>
+      <div class="toolbar"><span><span class="local-dot" id="fresh-dot"></span> <span id="last-update">No data received yet</span></span><div class="toolbar-controls"><button id="pause-toggle" type="button" aria-pressed="false">Ⅱ Pause refresh</button><label>Window <select id="window"><option value="1">Last 1 hour</option><option value="24" selected>Last 24 hours</option><option value="168">Last 7 days</option></select></label></div></div>
+      <section class="metrics" aria-label="Gateway measurements">
+        <article class="metric"><div>Observed availability <span>◉</span></div><strong id="availability">—</strong><small id="availability-note">Gateway health checks</small><div class="metric-rule"></div></article>
+        <article class="metric"><div>Current response time <span>⌁</span></div><strong id="current-latency">—</strong><small id="average-latency">Average: waiting for samples</small><div class="metric-rule"></div></article>
+        <article class="metric"><div>Successful checks <span>✓</span></div><strong id="successes">—</strong><small id="total-checks">No recorded checks</small><div class="metric-rule"></div></article>
+        <article class="metric"><div>Failed checks <span>!</span></div><strong id="failures">—</strong><small>Gateway failures in selected window</small><div class="metric-rule"></div></article>
+      </section>
+      <section class="panel instances-panel" id="instances"><div class="panel-heading"><div><h2>Application instances</h2><p>Independent probes inside the Docker network</p></div><span class="muted-tag">2 replicas</span></div><div id="instance-cards" class="instance-grid"><p class="empty">Waiting for monitoring samples…</p></div></section>
+      <div class="lower-grid">
+        <section class="panel chart-panel" id="history"><div class="panel-heading"><div><h2>Response time</h2><p id="chart-description">Gateway · successful probe averages · hover to inspect</p></div><label class="chart-selector">Target<select id="chart-target" aria-label="Chart target"><option value="gateway">Gateway</option><option value="app-1">app-1</option><option value="app-2">app-2</option></select></label></div><div class="chart-wrap"><canvas id="latency-chart" role="img" tabindex="0" aria-label="Gateway response latency history"></canvas><p id="chart-empty" class="empty">Waiting for response-time history…</p><div id="chart-tooltip" role="status" hidden></div></div><div class="chart-foot"><span id="chart-range">No measurement window yet</span><span id="chart-samples">0 probes</span></div></section>
+        <section class="panel topology"><div class="panel-heading"><div><h2>Traffic flow</h2><p>One entry point. Two independent replicas.</p></div></div><div class="flow"><div class="flow-node client-node">◉ <span>Browser<small>localhost:8080</small></span></div><div class="flow-line"></div><div class="flow-node proxy-node">⇄ <span>NGINX<small>Round-robin + retry</small></span><span class="node-label">PROXY</span></div><div class="flow-split"></div><div class="flow-replicas"><div class="replica"><i id="topology-app-1"></i>app-1</div><div class="replica"><i id="topology-app-2"></i>app-2</div></div></div><div class="topology-note">Monitor → each replica + gateway → SQLite</div></section>
+      </div>
+      <section class="panel request-panel"><div class="panel-heading"><div><h2>Try the load balancer</h2><p>Send a real request. See which replica answers.</p></div><button id="send-request" class="primary-button" type="button">Send request ↗</button></div><div class="request-console" id="request-result" aria-live="polite"><span class="console-prompt">GET</span> /api/app/ <span class="console-hint">Ready when you are. Request latency is measured in your browser.</span></div></section>
+      <section class="panel" id="incidents"><div class="panel-heading"><div><h2>Incident & recovery log</h2><p>Recorded health transitions · latest 30 events across retained history</p></div><span class="muted-tag" id="event-count">Waiting</span></div><div class="event-toolbar"><div class="segmented" role="group" aria-label="Filter event type"><button class="selected" data-event-filter="all" aria-pressed="true">All events</button><button data-event-filter="incident" aria-pressed="false">Incidents</button><button data-event-filter="recovery" aria-pressed="false">Recoveries</button></div><label>Component<select id="event-target" aria-label="Event component"><option value="all">All components</option><option value="gateway">Gateway</option><option value="app-1">app-1</option><option value="app-2">app-2</option></select></label></div><div class="table-scroll"><table><thead><tr><th>EVENT</th><th>COMPONENT</th><th>DETAIL</th><th>DETECTED AT</th></tr></thead><tbody id="event-rows"><tr><td colspan="4" class="empty">Waiting for incident history…</td></tr></tbody></table></div></section>
+      <section class="panel security-panel"><div class="panel-heading"><div><h2>Security & operations</h2><p>Configured safeguards · not a vulnerability scan</p></div><button id="audit-trail" type="button">View audit trail ↗</button></div><div class="security-grid"><div><span>NETWORK EXPOSURE</span><strong>Localhost entry point</strong><p>Internal services communicate over the Compose network.</p></div><div><span>PYTHON RUNTIME</span><strong>Restricted containers</strong><p>Non-root processes and read-only root filesystems.</p></div><div><span>ADMINISTRATION</span><strong>Local operator control</strong><p>Docker access stays in the terminal. No web mutation API.</p></div></div></section>
+      <footer><span>CloudGuard <span class="footer-sep">/</span> Self-Healing Mini Cloud</span><span>Observed samples, never estimated uptime · <a href="/api/monitor/summary" target="_blank" rel="noopener">View live API ↗</a></span></footer>
+    </div>
+  </main>
+  <dialog id="detail-dialog"><div class="dialog-heading"><span class="eyebrow">CLOUDGUARD / INSPECT</span><button id="close-dialog" type="button" aria-label="Close dialog">✕</button></div><div id="dialog-content"></div></dialog>
+  <div id="toast" role="status" hidden></div>
+</body>
+</html>

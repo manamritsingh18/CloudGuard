@@ -1,0 +1,355 @@
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 384B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.12-slim
+#2 DONE 1.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 116B done
+#3 DONE 0.0s
+
+#4 [internal] load build context
+#4 transferring context: 4.05kB done
+#4 DONE 0.0s
+
+#5 [1/8] FROM docker.io/library/python:3.12-slim@sha256:cb33f7f771ecec2ef1225cf39b159591a040391bd73e4c01f00fdfc4c47611d2
+#5 resolve docker.io/library/python:3.12-slim@sha256:cb33f7f771ecec2ef1225cf39b159591a040391bd73e4c01f00fdfc4c47611d2 0.1s done
+#5 DONE 0.1s
+
+#6 [2/8] WORKDIR /workspace
+#6 CACHED
+
+#7 [3/8] COPY backend/requirements.txt /tmp/backend-requirements.txt
+#7 CACHED
+
+#8 [6/8] COPY backend ./backend
+#8 CACHED
+
+#9 [4/8] COPY tests/requirements.txt /tmp/test-requirements.txt
+#9 CACHED
+
+#10 [5/8] RUN pip install --no-cache-dir -r /tmp/backend-requirements.txt -r /tmp/test-requirements.txt
+#10 CACHED
+
+#11 [7/8] COPY monitor ./monitor
+#11 CACHED
+
+#12 [8/8] COPY tests ./tests
+#12 DONE 0.1s
+
+#13 exporting to image
+#13 exporting layers
+#13 exporting layers 0.2s done
+#13 exporting manifest sha256:40de89471d2b598a7f23638dd6f6628601c22d0584b66925ef830cc40a1b7542 0.0s done
+#13 exporting config sha256:ba60ba07167b9acc82caf79a55ef82813f83e550d1c6e19a05b456bb74c4e3e8 0.0s done
+#13 exporting attestation manifest sha256:987e9e4804059731bed8971e8e519cc3194dd2171425e910777da67842a4e4c6
+#13 exporting attestation manifest sha256:987e9e4804059731bed8971e8e519cc3194dd2171425e910777da67842a4e4c6 0.0s done
+#13 exporting manifest list sha256:5df7f2ee2c4ed99e468d257d51523c481e3cb4dc65507bed1f29c527df4714d6 0.0s done
+#13 naming to docker.io/library/cloudguard-tests:latest done
+#13 unpacking to docker.io/library/cloudguard-tests:latest 0.1s done
+#13 DONE 0.4s
+................                                                         [100%]
+=============================== warnings summary ===============================
+../usr/local/lib/python3.12/site-packages/starlette/testclient.py:37
+  /usr/local/lib/python3.12/site-packages/starlette/testclient.py:37: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = typing.Callable[[], typing.ContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+16 passed, 1 warning in 1.99s
+{
+  "expected_status": "healthy",
+  "observed_status": "healthy",
+  "upstream_rejoin_warmup_requests": 2,
+  "successful_application_requests": 40,
+  "instance_distribution": {
+    "app-1": 20,
+    "app-2": 20
+  },
+  "targets": [
+    {
+      "target": "app-1",
+      "total_checks": 334,
+      "successful_checks": 309,
+      "average_latency_ms": 11.75566990291262,
+      "window_start": 1792595682.208316,
+      "window_end": 1792597351.3406563,
+      "last_success": 1792597351.3406563,
+      "status": "healthy",
+      "failed_checks": 25,
+      "availability_percent": 92.51497005988024,
+      "current_latency_ms": 13.488,
+      "last_check": 1792597351.3406563,
+      "last_error": null
+    },
+    {
+      "target": "app-2",
+      "total_checks": 334,
+      "successful_checks": 322,
+      "average_latency_ms": 10.154757763975155,
+      "window_start": 1792595682.2009296,
+      "window_end": 1792597351.340701,
+      "last_success": 1792597351.340701,
+      "status": "healthy",
+      "failed_checks": 12,
+      "availability_percent": 96.40718562874251,
+      "current_latency_ms": 12.747,
+      "last_check": 1792597351.340701,
+      "last_error": null
+    },
+    {
+      "target": "gateway",
+      "total_checks": 334,
+      "successful_checks": 333,
+      "average_latency_ms": 13.5614984984985,
+      "window_start": 1792595682.2014923,
+      "window_end": 1792597351.3415344,
+      "last_success": 1792597351.3415344,
+      "status": "healthy",
+      "failed_checks": 1,
+      "availability_percent": 99.7005988023952,
+      "current_latency_ms": 13.035,
+      "last_check": 1792597351.3415344,
+      "last_error": null
+    }
+  ],
+  "recent_events": [
+    {
+      "id": 46,
+      "target": "app-1",
+      "timestamp": 1792597221.3599217,
+      "kind": "recovery",
+      "message": "Health check succeeded again"
+    },
+    {
+      "id": 45,
+      "target": "app-1",
+      "timestamp": 1792597218.3244553,
+      "kind": "incident",
+      "message": "Health check timed out"
+    },
+    {
+      "id": 44,
+      "target": "app-2",
+      "timestamp": 1792596517.429878,
+      "kind": "recovery",
+      "message": "Health check succeeded again"
+    },
+    {
+      "id": 43,
+      "target": "app-2",
+      "timestamp": 1792596512.4225957,
+      "kind": "incident",
+      "message": "Connection failed"
+    },
+    {
+      "id": 41,
+      "target": "app-1",
+      "timestamp": 1792596497.431621,
+      "kind": "recovery",
+      "message": "Health check succeeded again"
+    }
+  ]
+}
+Audit recorded: stop app-1 requested
+ Container cloudguard-app1-1 Stopping 
+ Container cloudguard-app1-1 Stopped 
+Audit recorded: stop app-1 succeeded
+Action stop completed for app-1. Check the dashboard for the next recorded probe.
+{
+  "expected_status": "degraded",
+  "observed_status": "degraded",
+  "upstream_rejoin_warmup_requests": 0,
+  "successful_application_requests": 40,
+  "instance_distribution": {
+    "app-2": 40
+  },
+  "targets": [
+    {
+      "target": "app-1",
+      "total_checks": 335,
+      "successful_checks": 309,
+      "average_latency_ms": 11.75566990291262,
+      "window_start": 1792595682.208316,
+      "window_end": 1792597358.335492,
+      "last_success": 1792597351.3406563,
+      "status": "unhealthy",
+      "failed_checks": 26,
+      "availability_percent": 92.23880597014926,
+      "current_latency_ms": null,
+      "last_check": 1792597358.335492,
+      "last_error": "Health check timed out"
+    },
+    {
+      "target": "app-2",
+      "total_checks": 335,
+      "successful_checks": 323,
+      "average_latency_ms": 10.167495356037152,
+      "window_start": 1792595682.2009296,
+      "window_end": 1792597356.344488,
+      "last_success": 1792597356.344488,
+      "status": "healthy",
+      "failed_checks": 12,
+      "availability_percent": 96.41791044776119,
+      "current_latency_ms": 14.269,
+      "last_check": 1792597356.344488,
+      "last_error": null
+    },
+    {
+      "target": "gateway",
+      "total_checks": 335,
+      "successful_checks": 334,
+      "average_latency_ms": 13.566455089820359,
+      "window_start": 1792595682.2014923,
+      "window_end": 1792597356.3463364,
+      "last_success": 1792597356.3463364,
+      "status": "healthy",
+      "failed_checks": 1,
+      "availability_percent": 99.70149253731343,
+      "current_latency_ms": 15.217,
+      "last_check": 1792597356.3463364,
+      "last_error": null
+    }
+  ],
+  "recent_events": [
+    {
+      "id": 47,
+      "target": "app-1",
+      "timestamp": 1792597358.335492,
+      "kind": "incident",
+      "message": "Health check timed out"
+    },
+    {
+      "id": 46,
+      "target": "app-1",
+      "timestamp": 1792597221.3599217,
+      "kind": "recovery",
+      "message": "Health check succeeded again"
+    },
+    {
+      "id": 45,
+      "target": "app-1",
+      "timestamp": 1792597218.3244553,
+      "kind": "incident",
+      "message": "Health check timed out"
+    },
+    {
+      "id": 44,
+      "target": "app-2",
+      "timestamp": 1792596517.429878,
+      "kind": "recovery",
+      "message": "Health check succeeded again"
+    },
+    {
+      "id": 43,
+      "target": "app-2",
+      "timestamp": 1792596512.4225957,
+      "kind": "incident",
+      "message": "Connection failed"
+    }
+  ]
+}
+Audit recorded: start app-1 requested
+ Container cloudguard-app1-1 Starting 
+ Container cloudguard-app1-1 Started 
+Audit recorded: start app-1 succeeded
+Action start completed for app-1. Check the dashboard for the next recorded probe.
+{
+  "expected_status": "healthy",
+  "observed_status": "healthy",
+  "upstream_rejoin_warmup_requests": 11,
+  "successful_application_requests": 40,
+  "instance_distribution": {
+    "app-2": 20,
+    "app-1": 20
+  },
+  "targets": [
+    {
+      "target": "app-1",
+      "total_checks": 337,
+      "successful_checks": 310,
+      "average_latency_ms": 11.748216129032258,
+      "window_start": 1792595682.208316,
+      "window_end": 1792597366.3386698,
+      "last_success": 1792597366.3386698,
+      "status": "healthy",
+      "failed_checks": 27,
+      "availability_percent": 91.98813056379822,
+      "current_latency_ms": 9.445,
+      "last_check": 1792597366.3386698,
+      "last_error": null
+    },
+    {
+      "target": "app-2",
+      "total_checks": 337,
+      "successful_checks": 325,
+      "average_latency_ms": 10.150941538461538,
+      "window_start": 1792595682.2009296,
+      "window_end": 1792597366.3372467,
+      "last_success": 1792597366.3372467,
+      "status": "healthy",
+      "failed_checks": 12,
+      "availability_percent": 96.43916913946587,
+      "current_latency_ms": 7.395,
+      "last_check": 1792597366.3372467,
+      "last_error": null
+    },
+    {
+      "target": "gateway",
+      "total_checks": 337,
+      "successful_checks": 336,
+      "average_latency_ms": 13.540767857142859,
+      "window_start": 1792595682.2014923,
+      "window_end": 1792597366.3400736,
+      "last_success": 1792597366.3400736,
+      "status": "healthy",
+      "failed_checks": 1,
+      "availability_percent": 99.70326409495549,
+      "current_latency_ms": 9.79,
+      "last_check": 1792597366.3400736,
+      "last_error": null
+    }
+  ],
+  "recent_events": [
+    {
+      "id": 48,
+      "target": "app-1",
+      "timestamp": 1792597366.3386698,
+      "kind": "recovery",
+      "message": "Health check succeeded again"
+    },
+    {
+      "id": 47,
+      "target": "app-1",
+      "timestamp": 1792597358.335492,
+      "kind": "incident",
+      "message": "Health check timed out"
+    },
+    {
+      "id": 46,
+      "target": "app-1",
+      "timestamp": 1792597221.3599217,
+      "kind": "recovery",
+      "message": "Health check succeeded again"
+    },
+    {
+      "id": 45,
+      "target": "app-1",
+      "timestamp": 1792597218.3244553,
+      "kind": "incident",
+      "message": "Health check timed out"
+    },
+    {
+      "id": 44,
+      "target": "app-2",
+      "timestamp": 1792596517.429878,
+      "kind": "recovery",
+      "message": "Health check succeeded again"
+    }
+  ]
+}
+CloudGuard verification passed.

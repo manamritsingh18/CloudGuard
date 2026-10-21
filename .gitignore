@@ -1,0 +1,59 @@
+# ── Python ──────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+
+# ── Secrets & Environment ────────────────────────────────
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+*.secret
+
+# ── Database files ───────────────────────────────────────
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+
+# ── Docker volumes / data mounts ────────────────────────
+database/data/
+
+# ── Test artefacts ───────────────────────────────────────
+test-results/
+htmlcov/
+.coverage
+coverage.xml
+
+# ── OS junk ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE / editor ─────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# ── Node (frontend) ──────────────────────────────────────
+node_modules/
+dist/
+.next/
+
+# ── Logs ─────────────────────────────────────────────────
+*.log
+logs/
