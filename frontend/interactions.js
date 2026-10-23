@@ -10,14 +10,48 @@ function openDialog(nodes) {
 }
 function showInstance(name) {
   const target = latestTargets.find((item) => item.target === name);
-  if (!target) return;
+  const settings = targetConfig(name);
+  if (!target || !settings) return;
   const grid = element('div', null, 'detail-grid');
   for (const [label, value] of [['Status', target.status], ['Successful / total', `${target.successful_checks} / ${target.total_checks}`], ['Failed checks', target.failed_checks], ['Observed availability', percent(target.availability_percent)], ['Current latency', ms(target.current_latency_ms)], ['Average success latency', ms(target.average_latency_ms)]]) {
     const cell = element('div'); cell.append(element('small', label), element('strong', String(value))); grid.append(cell);
   }
-  openDialog([element('h2', name), element('p', 'Independent FastAPI replica on the private Compose network. Measurements below are from the selected window.'), grid,
-    element('p', `Last check: ${date(target.last_check)}`), element('p', `Last successful check in window: ${date(target.last_success)}`),
-    element('p', `Latest error: ${target.last_error || 'None'}`)]);
+  const metrics = Object.entries(target.latest_metrics || {}).map(([metric, value]) => `${metricLabel(metric)} ${withUnit(value, metricUnit(metric))}`).join(' · ');
+  openDialog([element('h2', settings.name), element('p', `${[settings.provider, settings.service_model].filter(Boolean).join(' · ')}${settings.critical ? ' · critical' : ' · non-critical'}. ${settings.description}`), grid,
+    element('p', `Probe: ${settings.url} · ${every(settings.interval_seconds)} · timeout ${number(settings.timeout_seconds, 1)} s`),
+    element('p', `Last check: ${date(target.last_check)}${target.last_status_code ? ` · HTTP ${target.last_status_code}` : ''}`), element('p', `Last successful check in window: ${date(target.last_success)}`),
+    element('p', `Latest recorded metrics: ${metrics || 'None'}`), element('p', `Latest error: ${target.last_error || 'None'}`)]);
+}
+function showSlo(id) {
+  const slo = latestSlos.find((item) => item.id === id);
+  if (!slo) return;
+  const [label, className] = SLO_STATUS[slo.status];
+  const grid = element('div', null, 'detail-grid');
+  for (const [name, value] of [['Attained', percent(slo.attainment_percent, 3)], ['Goal (SLO)', `${upTo(slo.goal_percent, 3)}% over ${windowText(slo.window_hours)}`], ['Error budget left', slo.budget_remaining_percent == null ? '—' : `${number(slo.budget_remaining_percent, 1)}%`], [`Burn rate (last ${upTo(slo.burn_window_hours, 2)} h)`, slo.burn_rate == null ? '—' : `${number(slo.burn_rate, 2)}×`]]) {
+    const cell = element('div'); cell.append(element('small', name), element('strong', value)); grid.append(cell);
+  }
+  const heading = element('p');
+  heading.append(element('span', label, `badge ${className}`), document.createTextNode(` ${slo.target_name} · ${sliText(slo)}. ${slo.description || ''}`));
+  const nodes = [element('h2', slo.name), heading, grid];
+  if (!slo.valid_checks) {
+    nodes.push(element('p', 'No valid checks recorded in this window yet, so nothing is calculated. CloudGuard never fills gaps with assumed successes.'));
+    openDialog(nodes);
+    return;
+  }
+  const allowed = slo.allowed_bad_fraction * 100;
+  const good = {availability: 'healthy checks', latency: `healthy checks within ${number(slo.threshold_ms)} ms`, metric: 'checks within the limit'}[slo.objective];
+  const valid = {availability: 'all checks', latency: 'healthy checks', metric: 'checks that reported the metric'}[slo.objective];
+  const steps = element('ol', null, 'calculation');
+  const step = (text) => steps.append(element('li', text));
+  step(`SLI = ${good} ÷ ${valid} = ${number(slo.good_checks)} ÷ ${number(slo.valid_checks)} = ${percent(slo.attainment_percent, 3)}.`);
+  step(`Error budget = ${upTo(allowed, 3)}% (100% − ${upTo(slo.goal_percent, 3)}% goal) of ${number(slo.valid_checks)} checks = ${number(slo.budget_checks, 2)} bad checks allowed.`);
+  step(`${number(slo.bad_checks)} bad checks so far → ${number(100 - slo.budget_remaining_percent, 1)}% of the budget used, ${number(slo.budget_remaining_percent, 1)}% left. Below 0% the SLO is breached; below 25% it is at risk.`);
+  step(slo.burn_valid_checks ? `Burn rate over the last ${upTo(slo.burn_window_hours, 2)} h = ${number(slo.burn_bad_checks)} bad of ${number(slo.burn_valid_checks)} checks (${percent(100 * slo.burn_bad_checks / slo.burn_valid_checks)}) ÷ ${upTo(allowed, 3)}% allowed = ${number(slo.burn_rate, 2)}×. 1× spends exactly the whole budget over ${windowText(slo.window_hours)}; 2× or more is flagged.` : `No checks in the last ${upTo(slo.burn_window_hours, 2)} h, so no burn rate.`);
+  if (slo.objective === 'availability') step(`Measured continuously, this budget is ${number(slo.allowed_bad_minutes, 1)} minutes of downtime per ${windowText(slo.window_hours)}. The ${number(slo.bad_checks)} failed checks stand for roughly ${number(slo.estimated_bad_minutes, 1)} minutes (one probe interval each).`);
+  if (slo.sla_percent != null) step(`SLA (the promise to users) = ${upTo(slo.sla_percent, 3)}%, looser than the internal ${upTo(slo.goal_percent, 3)}% goal, so the team is warned before the promise is broken. Currently ${slo.sla_met ? 'kept' : 'broken'}.`);
+  step(`Samples cover ${duration(slo.observed_hours)} of the ${windowText(slo.window_hours)} window (${percent(slo.coverage_percent, 1)}). Time the monitor was off is not counted either way, so early results can swing a lot.`);
+  nodes.push(element('h3', 'How this is calculated'), steps);
+  openDialog(nodes);
 }
 function commandBox(command) {
   const box = element('div', null, 'command-box');
@@ -29,9 +63,10 @@ function commandBox(command) {
   box.append(element('code', command), copy); return box;
 }
 $('demo-guide').addEventListener('click', () => {
+  if (configuration && selectedPlane !== LAB_PLANE) selectPlane(LAB_PLANE);
   const nodes = [element('h2', 'Recovery workflow'), element('p', 'Check service continuity and restore a replica. Run these commands in PowerShell, in the CloudGuard project folder. Docker operations stay under local operator control.')];
   const states = element('div', null, 'guide-status');
-  latestTargets.forEach((target) => states.append(element('span', `${target.target}: ${target.status}`, `badge ${target.status}`)));
+  latestTargets.filter((target) => target.plane === LAB_PLANE).forEach((target) => states.append(element('span', `${target.target}: ${target.status}`, `badge ${target.status}`)));
   nodes.push(states);
   for (const [title, description, command] of [
     ['01 / Establish the baseline', 'Both replicas should be healthy. Use “Send request” several times to see their identities.', 'docker compose ps'],
@@ -90,7 +125,7 @@ $('send-request').addEventListener('click', async () => {
 });
 function chartTooltip(index) {
   const point = chartPoints[index]; if (!point) return;
-  $('chart-tooltip').textContent = `${date(point.timestamp)} · ${ms(point.latency_ms)} · ${point.checks} checks · ${point.failures} failed`;
+  $('chart-tooltip').textContent = `${date(point.timestamp)} · ${withUnit(point.value, chartUnit)} · ${point.checks} checks · ${point.failures} failed`;
   $('chart-tooltip').hidden = false;
 }
 $('latency-chart').addEventListener('pointermove', (event) => {
@@ -118,7 +153,7 @@ document.addEventListener('pointermove', (event) => {
 const sectionObserver = new IntersectionObserver((entries) => {
   entries.forEach((entry) => { if (entry.isIntersecting) document.querySelectorAll('nav a[href^="#"]').forEach((link) => link.classList.toggle('active', link.hash === `#${entry.target.id}`)); });
 }, {rootMargin:'-15% 0px -65% 0px'});
-['overview','instances','history','incidents'].forEach((id) => sectionObserver.observe($(id)));
+['overview','instances','slos','history','incidents'].forEach((id) => sectionObserver.observe($(id)));
 if (new URLSearchParams(window.location.search).get('guide') === 'recovery') $('demo-guide').click();
 $('audit-trail').addEventListener('click', async () => {
   const content = element('div', 'Loading recorded operator actions…', 'audit-content');

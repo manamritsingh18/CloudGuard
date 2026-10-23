@@ -1,4 +1,8 @@
-"""Read-only assertions against the running Compose network; no fabricated samples."""
+"""Read-only assertions against the running Compose network; no fabricated samples.
+
+Statuses below are the local lab plane's. Production targets need internet access and are
+reported in the output, but never fail this check.
+"""
 import argparse
 import json
 import os
@@ -19,10 +23,14 @@ def get(path):
         return json.loads(body) if "application/json" in response.headers.get("Content-Type", "") else body
 
 
+def lab_status(summary):
+    return next(plane["status"] for plane in summary["planes"] if plane["id"] == "lab")
+
+
 deadline = time.monotonic() + 35
 while True:
     summary = get("/api/monitor/summary")
-    if summary["overall_status"] == args.expect:
+    if lab_status(summary) == args.expect:
         break
     if time.monotonic() >= deadline:
         raise AssertionError(f"Expected {args.expect}, received {summary}")
@@ -34,7 +42,11 @@ assert get("/healthz")["status"] == "healthy"
 assert get("/api/monitor/health")["status"] == "healthy"
 assert get("/styles.css") and get("/app.js")
 assert get("/landing.css") and get("/landing.js") and get("/interactions.js")
-assert isinstance(get("/api/monitor/history")["points"], list)
+assert isinstance(get("/api/monitor/history?target=gateway")["points"], list)
+configured = get("/api/monitor/targets")
+assert {"app-1", "app-2", "gateway"} <= {target["id"] for target in configured["targets"]}
+assert "headers" not in json.dumps(configured)
+assert all("status" in item for item in get("/api/monitor/slos")["slos"])
 for route in ["/api/monitor/summary?hours=0", "/api/monitor/history?target=bad", "/api/app/echo"]:
     try:
         get(route)
@@ -75,8 +87,10 @@ else:
     else:
         raise AssertionError("Both stopped replicas should make the application unavailable")
 
-print(json.dumps({"expected_status": args.expect, "observed_status": summary["overall_status"],
+print(json.dumps({"expected_status": args.expect, "observed_status": lab_status(summary),
+                  "planes": {plane["id"]: plane["status"] for plane in summary["planes"]},
                   "upstream_rejoin_warmup_requests": warmup_requests,
                   "successful_application_requests": len(identities),
                   "instance_distribution": {name: identities.count(name) for name in set(identities)},
-                  "targets": summary["targets"], "recent_events": get("/api/monitor/incidents?limit=5")["events"]}, indent=2))
+                  "lab_targets": [target for target in summary["targets"] if target["plane"] == "lab"],
+                  "recent_events": get("/api/monitor/incidents?limit=5")["events"]}, indent=2))

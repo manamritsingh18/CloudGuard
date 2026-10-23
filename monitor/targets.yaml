@@ -1,0 +1,353 @@
+# CloudGuard probe targets and service level objectives (SLOs).
+#
+# Edit this file, then restart the monitor: docker compose restart monitor
+# ${NAME} and ${NAME:-default} are replaced from the monitor's environment.
+#
+# CloudGuard only calls public endpoints. The one key it sends is the Supabase *publishable*
+# key, which every RoadWatch visitor already downloads in /config.js. A Supabase secret or
+# service_role key anywhere in this file stops the monitor at start.
+#
+# Each target is probed independently on its own interval. A probe is healthy when:
+#   - the HTTP status is 2xx, or one of expect.status
+#   - every expect.body_contains string is in the body and no expect.body_excludes string is
+#   - every expect.json path (dotted, e.g. worker.online) has one of the listed values
+# metrics: numbers copied from the JSON body into each sample (dotted paths). Every https
+# probe also records tls_days_left, the days until the server certificate expires.
+#
+# critical: a failing critical target makes its plane an "outage"; a failing non-critical one
+# makes it "degraded". Probing production gently matters: the RoadWatch deep health check reads
+# 12 database tables, so it runs every 5 minutes, not every 5 seconds.
+
+planes:
+  - id: production
+    name: RoadWatch production
+    description: The live final-year project on OVH, Supabase and Azure. Observe only.
+    headline: rw-api
+  - id: fallback
+    name: Fallback (DR)
+    description: The previous hosts kept as a disaster-recovery path.
+    headline: dr-render-api
+  - id: lab
+    name: Local lab
+    description: Two replicas behind NGINX on this machine. Safe to break on purpose.
+    headline: gateway
+
+targets:
+  # ── RoadWatch production: OVH VM (IaaS) running three Docker containers ─────────────
+  - id: rw-frontend
+    name: Web app
+    plane: production
+    provider: OVH VM
+    service_model: IaaS · nginx container
+    description: The React frontend served by nginx on the OVH virtual machine.
+    url: https://road-watch-poc.dynamatix.com/healthz
+    interval_seconds: 30
+    timeout_seconds: 10
+    expect:
+      body_contains: ok
+
+  - id: rw-config
+    name: Public config safety
+    plane: production
+    critical: false
+    provider: OVH VM
+    service_model: Security check
+    description: >-
+      /config.js is downloaded by every browser. It must carry the publishable Supabase key and
+      never a secret or service_role key.
+    url: https://road-watch-poc.dynamatix.com/config.js
+    interval_seconds: 300
+    timeout_seconds: 10
+    expect:
+      body_contains: sb_publishable_
+      body_excludes: [sb_secret_, service_role]
+
+  - id: rw-api
+    name: Backend API
+    plane: production
+    provider: OVH VM
+    service_model: IaaS · FastAPI container
+    description: Liveness and configuration of the FastAPI backend (no database round trip).
+    url: https://road-watch-poc.dynamatix.com/api/health
+    interval_seconds: 30
+    timeout_seconds: 10
+    expect:
+      json:
+        status: healthy
+    metrics:
+      uptime_s: uptime_s
+
+  - id: rw-api-deep
+    name: API → database
+    plane: production
+    provider: Supabase
+    service_model: PaaS · Postgres, via the API
+    description: >-
+      The API's deep health check: one HEAD request to each of the 12 tables it reads in Supabase
+      Postgres. db_latency_ms is the API's own measurement of that round trip (UK VM to the Tokyo
+      database). The API caches the result for 60 seconds.
+    url: https://road-watch-poc.dynamatix.com/api/health?deep=1
+    interval_seconds: 300
+    timeout_seconds: 25
+    expect:
+      json:
+        status: healthy
+        database.ok: true
+    metrics:
+      db_latency_ms: database.latency_ms
+      tables_checked: database.tables_checked
+
+  - id: rw-worker
+    name: AI worker and queue
+    plane: production
+    critical: false
+    provider: OVH VM
+    service_model: IaaS · worker container
+    description: >-
+      The YOLO + OCR queue worker, seen through the public /api/status: online means a heartbeat
+      in the last 10 minutes. Uploads still queue while it is offline. Cached 60 s by the API.
+    url: https://road-watch-poc.dynamatix.com/api/status
+    interval_seconds: 60
+    timeout_seconds: 15
+    expect:
+      json:
+        ok: true
+        worker.online: true
+    metrics:
+      queue_depth: queue.depth
+      processing: queue.processing
+      worker_silent_s: worker.silent_for_s
+      clips_analysed: totals.clips_analysed
+
+  # ── Supabase (PaaS): authentication, REST gateway and storage ───────────────────────
+  - id: supabase-auth
+    name: Supabase Auth
+    plane: production
+    provider: Supabase
+    service_model: PaaS · GoTrue
+    description: Sign-in, Google OAuth and password reset for every RoadWatch user.
+    url: https://fbjjoktuzirhpqqpzfbo.supabase.co/auth/v1/health
+    interval_seconds: 60
+    timeout_seconds: 10
+    headers:
+      apikey: ${SUPABASE_PUBLISHABLE_KEY:-sb_publishable_OvWd5P2dTVJScryY4VGjrw_JIYpzgOU}
+    expect:
+      json:
+        name: GoTrue
+
+  - id: supabase-auth-policy
+    name: Sign-in policy
+    plane: production
+    critical: false
+    provider: Supabase
+    service_model: Security check
+    description: >-
+      The public Auth settings must match the agreed policy: email and Google sign-in on,
+      e-mail confirmation required, anonymous users off.
+    url: https://fbjjoktuzirhpqqpzfbo.supabase.co/auth/v1/settings
+    interval_seconds: 300
+    timeout_seconds: 10
+    headers:
+      apikey: ${SUPABASE_PUBLISHABLE_KEY:-sb_publishable_OvWd5P2dTVJScryY4VGjrw_JIYpzgOU}
+    expect:
+      json:
+        external.email: true
+        external.google: true
+        external.anonymous_users: false
+        mailer_autoconfirm: false
+
+  - id: supabase-rest
+    name: Supabase REST gateway
+    plane: production
+    critical: false
+    provider: Supabase
+    service_model: PaaS · PostgREST
+    description: >-
+      PostgREST must answer, and must refuse to list the database schema to the publishable
+      key. A 401 asking for a secret key is the healthy answer.
+    url: https://fbjjoktuzirhpqqpzfbo.supabase.co/rest/v1/
+    interval_seconds: 120
+    timeout_seconds: 10
+    headers:
+      apikey: ${SUPABASE_PUBLISHABLE_KEY:-sb_publishable_OvWd5P2dTVJScryY4VGjrw_JIYpzgOU}
+    expect:
+      status: 401
+      body_contains: Secret API key required
+
+  - id: supabase-storage
+    name: Supabase Storage
+    plane: production
+    critical: false
+    provider: Supabase
+    service_model: PaaS · object storage
+    description: Holds clips uploaded before October 2026 (newer clips go to Azure Blob).
+    url: https://fbjjoktuzirhpqqpzfbo.supabase.co/storage/v1/version
+    interval_seconds: 120
+    timeout_seconds: 10
+    headers:
+      apikey: ${SUPABASE_PUBLISHABLE_KEY:-sb_publishable_OvWd5P2dTVJScryY4VGjrw_JIYpzgOU}
+
+  # ── Azure Blob Storage: clip uploads and evidence ───────────────────────────────────
+  - id: azure-blob-private
+    name: Evidence storage is private
+    plane: production
+    critical: false
+    provider: Azure Blob
+    service_model: Storage · security check
+    description: >-
+      An anonymous request to list the evidence container must be refused. 409
+      PublicAccessNotPermitted means anonymous access is disabled for the whole account.
+    url: https://roadwatch.blob.core.windows.net/evidence?restype=container&comp=list
+    interval_seconds: 300
+    timeout_seconds: 10
+    expect:
+      status: [403, 404, 409]
+      body_excludes: <EnumerationResults
+
+  # ── Fallback hosts kept from before the OVH move ────────────────────────────────────
+  - id: dr-render-api
+    name: Render API
+    plane: fallback
+    provider: Render
+    service_model: PaaS
+    description: The API on Render, live until the OVH deployment is fully verified.
+    url: https://raksharider.onrender.com/health
+    interval_seconds: 300
+    timeout_seconds: 30
+    expect:
+      json:
+        status: healthy
+
+  - id: dr-vercel-web
+    name: Vercel web app
+    plane: fallback
+    critical: false
+    provider: Vercel
+    service_model: PaaS
+    description: The frontend on Vercel, the fallback for the OVH web app.
+    url: https://raksharider.vercel.app/
+    interval_seconds: 300
+    timeout_seconds: 15
+
+  # ── Local lab: break these on purpose ───────────────────────────────────────────────
+  - id: app-1
+    name: app-1
+    plane: lab
+    critical: false
+    provider: Docker (local)
+    service_model: Container replica
+    description: Independent FastAPI replica on the private Compose network.
+    url: http://app1:8000/health
+    interval_seconds: ${CHECK_INTERVAL_SECONDS:-5}
+    timeout_seconds: ${CHECK_TIMEOUT_SECONDS:-2}
+    expect:
+      json:
+        status: healthy
+        instance: app-1
+
+  - id: app-2
+    name: app-2
+    plane: lab
+    critical: false
+    provider: Docker (local)
+    service_model: Container replica
+    description: Independent FastAPI replica on the private Compose network.
+    url: http://app2:8000/health
+    interval_seconds: ${CHECK_INTERVAL_SECONDS:-5}
+    timeout_seconds: ${CHECK_TIMEOUT_SECONDS:-2}
+    expect:
+      json:
+        status: healthy
+        instance: app-2
+
+  - id: gateway
+    name: Gateway
+    plane: lab
+    provider: Docker (local)
+    service_model: NGINX load balancer
+    description: The real NGINX application route, balanced across app-1 and app-2.
+    url: http://nginx/api/app/health
+    interval_seconds: ${CHECK_INTERVAL_SECONDS:-5}
+    timeout_seconds: ${CHECK_TIMEOUT_SECONDS:-2}
+    expect:
+      json:
+        status: healthy
+        instance: [app-1, app-2]
+
+# Service level objectives. Every SLO is "good checks / valid checks >= goal" over a rolling
+# window (at most RETENTION_DAYS long):
+#   availability: good = healthy check, valid = every check
+#   latency:      good = healthy check at or under threshold_ms, valid = healthy checks
+#   metric:       good = metric within min/max, valid = checks that reported the metric
+# The error budget is the (100 - goal)% of valid checks allowed to be bad. A goal of 100%
+# leaves no budget and is refused. sla_percent is the looser promise made to users.
+slos:
+  - id: api-availability
+    name: API availability
+    target: rw-api
+    objective: availability
+    goal_percent: 99.5
+    sla_percent: 99
+    window_hours: 168
+
+  - id: api-latency
+    name: API answers within 800 ms
+    target: rw-api
+    objective: latency
+    threshold_ms: 800
+    goal_percent: 95
+    window_hours: 168
+
+  - id: web-availability
+    name: Web app availability
+    target: rw-frontend
+    objective: availability
+    goal_percent: 99.5
+    sla_percent: 99
+    window_hours: 168
+
+  - id: db-latency
+    name: Database round trip under 2 s
+    target: rw-api-deep
+    objective: metric
+    metric: db_latency_ms
+    max: 2000
+    goal_percent: 90
+    window_hours: 168
+
+  - id: worker-online
+    name: AI worker online
+    target: rw-worker
+    objective: availability
+    goal_percent: 95
+    window_hours: 168
+
+  - id: auth-availability
+    name: Sign-in availability
+    target: supabase-auth
+    objective: availability
+    goal_percent: 99.5
+    window_hours: 168
+
+  - id: tls-certificate
+    name: TLS certificate valid for 21+ days
+    target: rw-frontend
+    objective: metric
+    metric: tls_days_left
+    min: 21
+    goal_percent: 99
+    window_hours: 168
+
+  - id: dr-ready
+    name: Fallback API ready
+    target: dr-render-api
+    objective: availability
+    goal_percent: 95
+    window_hours: 168
+
+  - id: lab-gateway
+    name: Lab gateway availability
+    target: gateway
+    objective: availability
+    goal_percent: 99
+    window_hours: 24

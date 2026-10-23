@@ -7,6 +7,16 @@ and check `docker compose ps`. Open `http://localhost:8080/` and
 `http://localhost:8080/dashboard`. Allow a few probe cycles. Keep PowerShell in the
 project folder. Have the README and actual screenshots available as evidence.
 
+## Optional opening (1 minute): our project, live
+
+Open the dashboard on **RoadWatch production**. Explain that CloudGuard is watching the
+final-year project across the OVH VM (IaaS), Supabase (PaaS), Azure Blob and the Render /
+Vercel fallback hosts, all from one `targets.yaml`. Show a service card's recorded metrics
+(database latency, queue depth, certificate days left), then the SLO table: select the
+database round-trip row and walk through SLI → SLO → error budget → burn rate. Switch to
+**Fallback (DR)** to show a real finding (the Vercel fallback answering 503), then to
+**Local lab** for the failure drill below.
+
 ## 0:00–1:00 — Explain the architecture
 
 Use the landing page's component buttons. Explain that a browser request follows
@@ -69,6 +79,11 @@ restart count rather than promising that every crash appears in the health log.
 | Is this highly available across hosts? | No. Docker Desktop, NGINX, monitoring, and SQLite each remain single-host dependencies. |
 | How are administrative actions restricted? | Docker control stays in local PowerShell; no public action API or Docker socket is exposed. |
 | Is there authentication? | No login/roles in this local core version. Local Docker access gates operator actions. |
+| What is an SLO and an error budget? | A goal for a measured indicator (e.g. 99.5% of checks healthy over 7 days). The budget is the 0.5% allowed to fail; burn rate is how fast it is being spent. |
+| What is the difference between the SLO and the SLA? | The SLA is the looser promise to users (99%); the stricter internal SLO (99.5%) warns the team first. |
+| Why not probe production every 5 seconds? | The deep check reads 12 database tables; monitoring must not become load. Production intervals are 30 s to 5 min. |
+| Does CloudGuard hold RoadWatch secrets? | No. It sends only the publishable Supabase key and refuses secret or service_role keys at start. |
+| Why do new numbers look extreme? | A few minutes of samples cover a tiny part of a 7-day window; coverage is shown next to every SLO. |
 
 Stop with `docker compose down` after the demonstration if desired. This preserves
 the monitoring volume for later review.

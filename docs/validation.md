@@ -84,3 +84,25 @@ Screenshots in `screenshots/` are real browser captures. Final landing, desktop,
 mobile, and audit screenshots show the implemented interface. The replica-failure
 capture was taken earlier during the same actual stop test, before the visual redesign.
 Screenshots contain historical values and do not substitute for current API state.
+
+
+## CloudGuard 2.0: configurable targets and SLOs (23 October 2026)
+
+Observed on the development laptop (Windows 11, Docker Desktop 29.8.0) after the upgrade:
+
+- `pytest -q tests` in the test image: 34 passed (config validation and secret-key refusal,
+  probe expectations, plane rollup, v1 database migration, metric history, SLO error budget,
+  burn rate, coverage and SLA, API validation).
+- `scripts/verify.ps1 -FailureRecovery`: passed (Compose and NGINX validation, unit tests,
+  live smoke test with traffic on both replicas, app-1 stopped with traffic served by app-2,
+  app-1 restored).
+- Existing `cloudguard_monitoring-data` volume: kept its lab history (8,230 gateway checks in
+  the first 24-hour summary) and gained the new columns.
+- First production probes: all 10 RoadWatch production targets healthy. API deep check
+  reported a 3.4–4.7 s database round trip (`db_latency_ms`), so the "under 2 s" SLO starts
+  breached. Certificate days left: 188 (road-watch-poc.dynamatix.com), 32.5 (Supabase),
+  70.1 (Azure Blob). Fallback: Render API healthy, Vercel web app answering HTTP 503.
+- Probe timing: two new connections opened at the same instant to the RoadWatch server took
+  about 1 s longer for one of them (three repetitions); one alone took about 0.4 s. The first
+  production samples, taken before probes were staggered, recorded the API at about 1.4 s and
+  remain in the history.

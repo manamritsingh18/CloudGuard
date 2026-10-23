@@ -46,10 +46,11 @@ async function updateLive() {
     const response = await fetch('/api/monitor/summary', {cache:'no-store', signal:AbortSignal.timeout(8000)});
     if (!response.ok) throw new Error('Monitor unavailable');
     const summary = await response.json();
-    const titles = {healthy:'All systems operational', degraded:'Service available · replica degraded', outage:'Application gateway unavailable', unknown:'Waiting for fresh health samples'};
-    document.getElementById('landing-status').textContent = `${titles[summary.overall_status]} · checked ${new Date(summary.generated_at * 1000).toLocaleTimeString()}`;
-    document.getElementById('landing-status-dot').style.background = summary.overall_status === 'healthy' ? '#a1e8c4' : '#dfb27b';
-    summary.targets.filter((target) => target.target !== 'gateway').forEach((target) => { document.getElementById(`hero-${target.target}`).className = `art-dot ${target.status}`; });
+    const words = {healthy:'operational', degraded:'degraded', outage:'critical failure', unknown:'waiting for samples'};
+    const planes = summary.planes.map((plane) => `${plane.name}: ${words[plane.status]}`).join(' · ');
+    document.getElementById('landing-status').textContent = `${planes} · checked ${new Date(summary.generated_at * 1000).toLocaleTimeString()}`;
+    document.getElementById('landing-status-dot').style.background = summary.planes.every((plane) => plane.status === 'healthy') ? '#a1e8c4' : '#dfb27b';
+    summary.targets.filter((target) => target.target === 'app-1' || target.target === 'app-2').forEach((target) => { document.getElementById(`hero-${target.target}`).className = `art-dot ${target.status}`; });
   } catch {
     document.getElementById('landing-status').textContent = 'Monitoring unavailable · reconnecting automatically';
     document.getElementById('landing-status-dot').style.background = '#a08b85';

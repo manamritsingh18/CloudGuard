@@ -36,14 +36,16 @@ services:
     security_opt: [no-new-privileges:true]
     environment:
       DB_PATH: /data/cloudguard.db
+      TARGETS_FILE: /config/targets.yaml
       CHECK_INTERVAL_SECONDS: ${CHECK_INTERVAL_SECONDS:-5}
       CHECK_TIMEOUT_SECONDS: ${CHECK_TIMEOUT_SECONDS:-2}
       RETENTION_DAYS: ${RETENTION_DAYS:-7}
-      APP1_HEALTH_URL: http://app1:8000/health
-      APP2_HEALTH_URL: http://app2:8000/health
-      GATEWAY_HEALTH_URL: http://nginx/api/app/health
+      # Public, browser-safe key; targets.yaml has the same default. Never a secret key.
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
     volumes:
       - monitoring-data:/data
+      # Edit targets.yaml, then: docker compose restart monitor (no rebuild needed).
+      - ./monitor/targets.yaml:/config/targets.yaml:ro
     depends_on:
       app1: {condition: service_healthy}
       app2: {condition: service_healthy}
